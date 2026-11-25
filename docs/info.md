@@ -20,7 +20,9 @@ Each delay is an 8-bit binary-weighted delay line built from `sky130_fd_sc_hd__d
 (stage k = 2^k LSB, bypassed by a mux when code bit k is 0). The signal path is asynchronous: PWM is never
 sampled by the clock, so there is no clock-related jitter.
 
-Nominal target is about 1 ns per LSB (0 to about 255 ns), but the real value depends on process, voltage and temperature.
+From post-route STA, 1 LSB (2 delay cells) is about 1.14 ns typical (tt, 25 C, 1.8 V), so the range is about
+3 ns to 294 ns. Across corners the LSB ranges from about 0.77 ns (ff, -40 C, 1.95 V) to 2.36 ns (ss, 100 C, 1.6 V),
+so calibration matters.
 It can be measured on the chip: in calibration mode the selected delay line is closed into a ring oscillator
 (period = 2 x (line delay + loop overhead)), divided by 2^(6+DIV), and sent to `CAL_OUT`.
 Measuring the period at two codes gives the LSB size and the offset.

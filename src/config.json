@@ -35,6 +35,10 @@
   "//": "Stop the resizer from removing or resizing them (it would see them as useless buffers).",
   "RSZ_DONT_TOUCH_RX": ".*dt_keep.*",
 
+  "//": "Custom SDC: base constraints + false path on the asynchronous outputs (OUT_H, OUT_L, CAL_OUT).",
+  "PNR_SDC_FILE": "dir::project.sdc",
+  "SIGNOFF_SDC_FILE": "dir::project.sdc",
+
   "//": "Configuration docs: https://librelane.readthedocs.io/en/latest/reference/configuration.html",
 
   "//": "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",

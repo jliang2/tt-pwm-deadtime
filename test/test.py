@@ -2,8 +2,8 @@
 #
 # Tests for tt_um_pwm_deadtime.
 #
-# RTL simulation uses test/sim_cells.v (placeholder delays):
-#   1 LSB = 1.0 ns, deadtime offset = 0.9 ns (input mux + 8 stage muxes)
+# RTL simulation uses test/sim_cells.v (typical-corner delays from STA):
+#   1 LSB = 1.14 ns, deadtime offset = 3.15 ns (input mux + 8 stage muxes)
 # so absolute deadtimes are checked.
 #
 # Gate-level simulation (GATES=yes) uses unit delays for every cell, so only
@@ -19,9 +19,10 @@ from cocotb.utils import get_sim_time
 GL = os.environ.get("GATES") == "yes"
 
 # RTL model constants (must match sim_cells.v and UNIT_CELLS)
-LSB_NS = 1.0
-OFFSET_NS = 0.9          # input mux 0.1 + 8 x stage mux 0.1
-RING_EXTRA_NS = 0.95     # one ring half-period overhead: NAND 0.05 + input mux 0.1 + 8 muxes 0.8
+GATE_NS, MUX_NS, NAND_NS, UNIT_CELLS = 0.57, 0.35, 0.10, 2
+LSB_NS = UNIT_CELLS * GATE_NS               # 1.14 ns
+OFFSET_NS = 9 * MUX_NS                      # input mux + 8 stage muxes
+RING_EXTRA_NS = NAND_NS + 9 * MUX_NS        # one ring half-period overhead
 TOL_NS = 0.05
 
 SETTLE_NS = 3000         # long enough for an edge to pass a full delay line (also in GL)
