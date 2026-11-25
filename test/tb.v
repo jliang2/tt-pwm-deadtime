@@ -7,11 +7,22 @@
 module tb ();
 
   // Dump the signals to a FST file. You can view it with gtkwave or surfer.
+  // Gate-level / post-layout sims dump only the top-level pins: dumping every
+  // net of the 7000-instance netlist made the CI gate-level test take hours.
   initial begin
     $dumpfile("tb.fst");
+`ifdef GL_TEST
+    $dumpvars(1, tb);
+`else
     $dumpvars(0, tb);
+`endif
     #1;
   end
+
+`ifdef SDF_FILE
+  // Post-layout simulation: back-annotate real cell + wire delays from STA
+  initial $sdf_annotate(`SDF_FILE, user_project);
+`endif
 
   reg clk;
   reg rst_n;

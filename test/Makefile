@@ -8,7 +8,26 @@ TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
 PROJECT_SOURCES = project.v dt_spi.v dt_core.v dt_delay_line.v
 
-ifneq ($(GATES),yes)
+ifeq ($(POSTSIM),yes)
+
+# Post-layout simulation with SDF back-annotation (run locally, see 设计说明.md).
+# First run postsim_prep.py to make an Icarus-compatible cell library and SDF, then:
+#   make POSTSIM=yes NETLIST=<final/pnl/*.pnl.v> CELL_LIB=<patched lib> SDF=<patched sdf>
+SIM_BUILD				= sim_build/postsim
+CELL_LIB        ?= $(PDK_ROOT)/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v
+GATES            = yes
+export GATES
+COMPILE_ARGS    += -DGL_TEST
+COMPILE_ARGS    += -DPOSTSIM
+COMPILE_ARGS    += -DUSE_POWER_PINS
+COMPILE_ARGS    += -DUNIT_DELAY=\#0
+COMPILE_ARGS    += -gspecify
+COMPILE_ARGS    += -DSDF_FILE=\"$(SDF)\"
+VERILOG_SOURCES += $(PDK_ROOT)/sky130A/libs.ref/sky130_fd_sc_hd/verilog/primitives.v
+VERILOG_SOURCES += $(CELL_LIB)
+VERILOG_SOURCES += $(NETLIST)
+
+else ifneq ($(GATES),yes)
 
 # RTL simulation:
 SIM_BUILD				= sim_build/rtl
