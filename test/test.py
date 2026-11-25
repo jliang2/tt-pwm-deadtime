@@ -222,9 +222,11 @@ async def test_calibration(dut):
     """Ring-oscillator calibration: two codes -> LSB size and offset."""
     await setup(dut)
 
+    # gate-level sim (unit delays, every net dumped) is ~100x slower: use a small second code there
+    code_hi = 10 if GL else 100
     for sel, reg in [(0, REG_RISE), (1, REG_FALL)]:
         periods = {}
-        for code in (0, 100):
+        for code in (0, code_hi):
             await spi_write(dut, REG_CTRL, 0x00)
             await spi_write(dut, reg, code)
             await spi_write(dut, REG_CTRL, CTRL_CAL | (CTRL_SEL if sel else 0))  # div_sel = 0 -> /64
@@ -232,12 +234,12 @@ async def test_calibration(dut):
             assert not bit(dut.out_h) and not bit(dut.out_l)
 
         # ring period = 2 * (line delay + loop overhead); divided by 64
-        lsb = (periods[100] - periods[0]) / (2 * 64 * 100)
+        lsb = (periods[code_hi] - periods[0]) / (2 * 64 * code_hi)
         overhead = periods[0] / (2 * 64)
-        dut._log.info(f"line {'B' if sel else 'A'}: T(0)={periods[0]:.2f} ns  T(100)={periods[100]:.2f} ns  "
+        dut._log.info(f"line {'B' if sel else 'A'}: T(0)={periods[0]:.2f} ns  T({code_hi})={periods[code_hi]:.2f} ns  "
                       f"-> LSB={lsb:.4f} ns, loop overhead={overhead:.3f} ns")
 
-        assert periods[100] > periods[0]
+        assert periods[code_hi] > periods[0]
         if not GL:
             assert abs(lsb - LSB_NS) < 0.01
             assert abs(overhead - RING_EXTRA_NS) < 0.01
