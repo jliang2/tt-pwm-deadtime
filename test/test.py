@@ -6,8 +6,15 @@
 #   1 LSB = 1.14 ns, deadtime offset = 3.15 ns (input mux + 8 stage muxes)
 # so absolute deadtimes are checked.
 #
-# Gate-level simulation (GATES=yes) uses unit delays for every cell, so only
-# behaviour (ordering, monotonic increase, no overlap) is checked there.
+# Gate-level simulation in CI (GATES=yes) uses the FUNCTIONAL sky130 models:
+# flip-flops get a unit delay, but every combinational cell (delay gates,
+# muxes, the NAND) has ZERO delay. So there:
+#   - all deadtimes are 0, only logic behaviour (no overlap, outputs follow PWM)
+#     is checked;
+#   - the ring oscillator must never be started: a zero-delay loop toggles
+#     forever without simulation time advancing (this hung CI for 6 hours).
+# Post-layout simulation (POSTSIM=yes, real SDF delays) runs everything and
+# checks the ordering of the measured deadtimes.
 
 import os
 
@@ -17,6 +24,8 @@ from cocotb.triggers import ClockCycles, First, ReadOnly, RisingEdge, Timer, Val
 from cocotb.utils import get_sim_time
 
 GL = os.environ.get("GATES") == "yes"
+POSTSIM = os.environ.get("POSTSIM") == "yes"
+ZERO_DELAY = GL and not POSTSIM     # CI gate-level sim: combinational cells have no delay
 
 # RTL model constants (must match sim_cells.v and UNIT_CELLS)
 GATE_NS, MUX_NS, NAND_NS, UNIT_CELLS = 0.57, 0.35, 0.10, 2
@@ -139,12 +148,14 @@ async def test_spi_registers(dut):
 
     await spi_write(dut, REG_RISE, 0x12)
     await spi_write(dut, REG_FALL, 0xA5)
-    await spi_write(dut, REG_CTRL, 0x2B)
+    # 0x2D = EN | CAL_SEL | DIV=5. CAL is left off: in the zero-delay CI
+    # gate-level sim a running ring oscillator would hang the simulator.
+    await spi_write(dut, REG_CTRL, 0x2D)
     await spi_write(dut, REG_ID, 0x00)
 
     assert await spi_read(dut, REG_RISE) == 0x12
     assert await spi_read(dut, REG_FALL) == 0xA5
-    assert await spi_read(dut, REG_CTRL) == 0x2B
+    assert await spi_read(dut, REG_CTRL) == 0x2D
     assert await spi_read(dut, REG_ID) == 0xD7
 
 
@@ -184,7 +195,9 @@ async def test_deadtime_spi_mode(dut):
             assert abs(dt_r - expected_dt(code_rise)) < TOL_NS
             assert abs(dt_f - expected_dt(code_fall)) < TOL_NS
 
-    # behaviour checks that also hold for gate level
+    if ZERO_DELAY:
+        return
+    # ordering checks (RTL and post-layout sim, which have real delays)
     assert results[(40, 10)][0] > results[(10, 40)][0]
     assert results[(10, 40)][1] > results[(40, 10)][1]
     assert results[(255, 128)][0] > results[(40, 10)][0]
@@ -217,7 +230,7 @@ async def test_pin_mode(dut):
         assert abs(dt_f - expected_dt(25)) < TOL_NS
 
 
-@cocotb.test()
+@cocotb.test(skip=ZERO_DELAY)
 async def test_calibration(dut):
     """Ring-oscillator calibration: two codes -> LSB size and offset."""
     await setup(dut)
@@ -247,7 +260,7 @@ async def test_calibration(dut):
     await spi_write(dut, REG_CTRL, 0x00)
 
 
-@cocotb.test()
+@cocotb.test(skip=ZERO_DELAY)
 async def test_calibration_pin_mode(dut):
     """CAL pin starts the ring oscillator in pin mode."""
     await setup(dut)

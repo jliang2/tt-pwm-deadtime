@@ -17,6 +17,7 @@ SIM_BUILD				= sim_build/postsim
 CELL_LIB        ?= $(PDK_ROOT)/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v
 GATES            = yes
 export GATES
+export POSTSIM
 COMPILE_ARGS    += -DGL_TEST
 COMPILE_ARGS    += -DPOSTSIM
 COMPILE_ARGS    += -DUSE_POWER_PINS
